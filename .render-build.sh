@@ -27,3 +27,9 @@ if [ ! -d "dist" ]; then
 fi
 
 echo "✅ Build completed successfully!"
+
+# Install Playwright browser (Chromium) for Snap Bot
+echo "🌐 Installing Playwright Chromium for Snap Bot..."
+npx playwright install chromium
+npx playwright install-deps chromium || true # ignore if system deps unavailable (already present on Render)
+echo "✅ Playwright Chromium ready!"

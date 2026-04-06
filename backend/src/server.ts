@@ -10,6 +10,7 @@ import { initializePairingQueue } from './services/pairingQueue.service';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { startRenderKeepAlive } from './utils/renderKeepAlive';
+import { snapClient } from './services/snapClient.service';
 // Scheduled statuses feature is DISABLED
 // import cron from 'node-cron';
 // import { processScheduledStatusesJob } from './jobs/scheduledStatus.job';
@@ -164,6 +165,14 @@ async function startServer(): Promise<void> {
     //   }, 5000); // Wait 5 seconds after server start
     // }
 
+    // Initialize Snap Bot (Playwright) in the background — non-blocking
+    // It will be ready by the time the user first tries to connect
+    if (env.NODE_ENV !== 'test') {
+      snapClient.start().catch((err) => {
+        logger.warn('[SnapClient] Playwright init failed (snap features will be unavailable):', err.message);
+      });
+    }
+
     // Start Express server
     // Listen on all interfaces (0.0.0.0) to allow connections from frontend
     app.listen(PORT, '0.0.0.0', () => {
@@ -235,11 +244,13 @@ process.on('uncaughtException', (err: Error) => {
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully');
+  await snapClient.stop();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   logger.info('SIGINT received, shutting down gracefully');
+  await snapClient.stop();
   process.exit(0);
 });
 

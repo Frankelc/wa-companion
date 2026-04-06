@@ -53,22 +53,4 @@ services:
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
       - key: SNAP_BOT_URL
-        value: "https://amda-snap-bot.onrender.com"
-
-  # NOUVEAU SERVICE : Snap Bot (Python)
-  - type: web
-    name: amda-snap-bot
-    env: python
-    plan: free # Attention: Playwright Chromium est gourmand, la RAM du plan Free (512MB) pourrait parfois être limite
-    buildCommand: "cd backend/snap-bot && pip install -r requirements.txt && playwright install chromium && playwright install-deps chromium"
-    startCommand: "cd backend/snap-bot && uvicorn main:app --host 0.0.0.0 --port $PORT"
-    healthCheckPath: /api/snap-bot/health
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      - key: FRONTEND_URL
-        sync: false
+        value: "" # Plus nécessaire : Playwright tourne dans le même processus Node.js
