@@ -21,6 +21,7 @@ import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import Upgrade from "./pages/Upgrade";
 import Help from "./pages/Help";
+import SnapCaptures from "./pages/SnapCaptures";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import NotFound from "./pages/NotFound";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="settings" element={<Settings />} />
               <Route path="upgrade" element={<Upgrade />} />
               <Route path="help" element={<Help />} />
+              <Route path="snap-captures" element={<SnapCaptures />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

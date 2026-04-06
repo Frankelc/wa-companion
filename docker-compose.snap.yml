@@ -1,0 +1,24 @@
+# docker-compose.yml — Lance le snap-bot en local sur votre PC
+# Usage : docker compose up --build
+
+services:
+  snap-bot:
+    build:
+      context: ./backend/snap-bot
+      dockerfile: Dockerfile
+    container_name: amda-snap-bot
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./backend/snap-bot/.env
+    volumes:
+      # Persistance des sessions Snapchat (évite de rescanner le QR à chaque restart)
+      - snap_sessions:/app/snap_sessions
+    # Permet à Playwright de lancer Chromium (nécessite des accès system)
+    shm_size: '2gb'
+    security_opt:
+      - seccomp:unconfined
+
+volumes:
+  snap_sessions:

@@ -23,6 +23,7 @@ import mediaRoutes from './routes/media.routes';
 import notificationsRoutes from './routes/notifications.routes';
 import adminRoutes from './routes/admin.routes';
 import logsRoutes from './routes/logs.routes';
+import snapRoutes from './routes/snap.routes';
 
 const app: Application = express();
 
@@ -315,6 +316,7 @@ app.use('/api/media', mediaRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/logs', logsRoutes);
+app.use('/api/snap', snapRoutes);
 
 // 404 handler
 app.use(notFoundHandler);

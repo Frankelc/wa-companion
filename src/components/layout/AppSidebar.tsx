@@ -20,6 +20,7 @@ import {
   Trash2,
   Settings,
   Sparkles,
+  Ghost,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,7 @@ const desktopMenuItems = [
   { title: "View Once", url: "/dashboard/view-once", icon: Eye },
   { title: "Messages Supprimés", url: "/dashboard/deleted-messages", icon: Trash2 },
   { title: "Répondeur Auto", url: "/dashboard/autoresponder", icon: MessageSquare },
+  { title: "Snap Captures", url: "/dashboard/snap-captures", icon: Ghost },
   { title: "Analytics", url: "/dashboard/analytics", icon: BarChart3, premium: true },
   { title: "Upgrade Premium", url: "/dashboard/upgrade", icon: Crown },
   { title: "Aide & Support", url: "/dashboard/help", icon: HelpCircle },
