@@ -45,8 +45,7 @@ const desktopMenuItems = [
   { title: "Messages Supprimés", url: "/dashboard/deleted-messages", icon: Trash2 },
   { title: "Répondeur Auto", url: "/dashboard/autoresponder", icon: MessageSquare },
   { title: "Snap Captures", url: "/dashboard/snap-captures", icon: Ghost },
-  { title: "Analytics", url: "/dashboard/analytics", icon: BarChart3, premium: true },
-  { title: "Upgrade Premium", url: "/dashboard/upgrade", icon: Crown },
+  { title: "Analytics", url: "/dashboard/analytics", icon: BarChart3 },
   { title: "Aide & Support", url: "/dashboard/help", icon: HelpCircle },
   { title: "Paramètres", url: "/dashboard/settings", icon: Settings },
 ];
@@ -113,9 +112,6 @@ export function AppSidebar() {
                         {!collapsed && (
                           <>
                             <span className="flex-1">{item.title}</span>
-                            {item.premium && (
-                              <Crown className="w-4 h-4 text-premium" />
-                            )}
                           </>
                         )}
                       </NavLink>
@@ -126,23 +122,7 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {!collapsed && !isPremium && (
-            <div className="mt-auto p-4 mb-4">
-              <div className="bg-gradient-premium rounded-lg p-4 text-premium-foreground">
-                <Sparkles className="w-6 h-6 mb-2" />
-                <h4 className="font-semibold mb-1 text-sm">Passez à Premium</h4>
-                <p className="text-xs opacity-90 mb-3">
-                  Débloquez toutes les fonctionnalités
-                </p>
-                <button 
-                  onClick={() => navigate('/dashboard/upgrade')}
-                  className="w-full bg-background text-foreground px-3 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
-                >
-                  Upgrade
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Section Premium retirée */}
 
           <div className="p-2 border-t border-sidebar-border">
             <SidebarTrigger className="w-full" />

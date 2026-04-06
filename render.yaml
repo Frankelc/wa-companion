@@ -59,7 +59,7 @@ services:
   - type: web
     name: amda-snap-bot
     env: python
-    plan: starter # Starter recommandé à cause de la taille du nav headless (Chromium)
+    plan: free # Attention: Playwright Chromium est gourmand, la RAM du plan Free (512MB) pourrait parfois être limite
     buildCommand: "cd backend/snap-bot && pip install -r requirements.txt && playwright install chromium && playwright install-deps chromium"
     startCommand: "cd backend/snap-bot && uvicorn main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/snap-bot/health

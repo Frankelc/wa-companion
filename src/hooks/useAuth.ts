@@ -132,7 +132,7 @@ export function useAuth() {
   });
 
   const isAuthenticated = !!apiClient.getToken() && !!user;
-  const isPremium = user?.plan === 'premium';
+  const isPremium = true; // Forcé en true (Option Premium retirée)
 
   return {
     user,

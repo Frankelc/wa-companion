@@ -63,7 +63,9 @@ export const authorize = (...allowedPlans: UserPlan[]) => {
 };
 
 /**
- * Require Premium plan
+ * Require Premium plan (Désactivé : tout le monde est Premium)
  */
-export const requirePremium = authorize('premium');
+export const requirePremium = (req: AuthRequest, _res: Response, next: NextFunction): void => {
+  next();
+};
 
