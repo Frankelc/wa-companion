@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Backend API + Snap Bot (Playwright)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: amda-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    volumes:
+      # Persistance des sessions Snapchat
+      - snap_sessions:/app/snap_sessions
+      # Optionnel: persistance des logs si besoin
+    # Nécessaire pour Playwright
+    shm_size: '2gb'
+    security_opt:
+      - seccomp:unconfined
+
+  # Frontend (Vite + Nginx)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # On passe l'URL de l'API pour que Vite puisse l'injecter au build
+        - VITE_API_URL=http://localhost:3001
+    container_name: amda-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  snap_sessions:

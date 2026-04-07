@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.git
+.gitignore
+backend
+scripts
+supabase
+*.log
+README.md
+PROJET_SYNTHESE.md
+DEPLOYMENT_GUIDE.md

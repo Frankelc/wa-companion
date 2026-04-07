@@ -1,10 +1,10 @@
 services:
   - type: web
     name: amda-backend
-    env: node
+    env: docker
     plan: free
-    buildCommand: bash .render-build.sh
-    startCommand: cd backend && npm start
+    dockerContext: ./backend
+    dockerfilePath: Dockerfile
     healthCheckPath: /health
     envVars:
       # Node Version

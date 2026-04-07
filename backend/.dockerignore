@@ -20,6 +20,12 @@ tmp
 temp
 *.tmp
 *.tsbuildinfo
+snap_sessions
+uploads
+*.png
+*.jpg
+*.mp4
+*.ogg
 
 
 
