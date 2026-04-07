@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS view_once_captures (
   sender_id VARCHAR(255) NOT NULL,
   sender_name VARCHAR(255) NOT NULL,
   media_url TEXT NOT NULL,
-  media_type VARCHAR(50) NOT NULL CHECK (media_type IN ('image', 'video')),
+  media_type VARCHAR(50) NOT NULL CHECK (media_type IN ('image', 'video', 'audio')),
   file_size BIGINT,
   captured_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

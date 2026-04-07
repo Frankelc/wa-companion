@@ -466,10 +466,15 @@ const downloadViewOnceFromQuoted = async (
     // Générer nom de fichier
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 10);
-    const extension = viewOnceData.type === 'video' ? 'mp4' : (viewOnceData.type === 'audio' ? 'mp3' : 'jpg');
+    
+    // Déterminer l'extension appropriée
+    let extension = 'jpg';
+    if (viewOnceData.type === 'video') extension = 'mp4';
+    else if (viewOnceData.type === 'audio') extension = 'ogg'; // WhatsApp voice notes are usually ogg/opus
+    
     const filename = `${userId}_${timestamp}_${random}.${extension}`;
 
-    logger.info(`[ViewOnce] ✅ Buffer ready: ${buffer.length} bytes`);
+    logger.info(`[ViewOnce] ✅ Buffer ready: ${buffer.length} bytes, filename: ${filename}`);
 
     return {
       success: true,
@@ -593,7 +598,11 @@ export const captureViewOnceFromQuoted = async (
 
     // 5. Upload vers Supabase Storage
     const { uploadMedia } = await import('./media.service');
-    const mimeType = viewOnceData.type === 'video' ? 'video/mp4' : (viewOnceData.type === 'audio' ? 'audio/mp3' : 'image/jpeg');
+    
+    let mimeType = 'image/jpeg';
+    if (viewOnceData.type === 'video') mimeType = 'video/mp4';
+    else if (viewOnceData.type === 'audio') mimeType = 'audio/ogg';
+    
     const mediaUrl = await uploadMedia(downloadResult.buffer, downloadResult.filename!, mimeType, 'view-once', userId);
 
     // 6. Sauvegarder en base de données

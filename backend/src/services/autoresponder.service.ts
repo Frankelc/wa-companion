@@ -3,7 +3,7 @@ import { logger } from '../config/logger';
 import { getSupabaseClient } from '../config/database';
 import { captureViewOnceFromQuoted } from './viewOnce.service';
 import { getSocket, getActiveSockets } from './whatsapp.service';
-import { matchesViewOnceCommand } from './viewOnceCommand.service';
+import { matchesViewOnceCommand, updateViewOnceCommandConfig, getViewOnceCommandConfig } from './viewOnceCommand.service';
 import { findUserIdBySocketJID } from './userIdentification.service';
 
 const supabase = getSupabaseClient();
@@ -128,15 +128,68 @@ export const handleIncomingMessage = async (
     // Détecter la commande View Once configurée par l'utilisateur qui a envoyé la commande
     const isViewOnceCommand = await matchesViewOnceCommand(commandUserId, messageText);
 
+    // Récupérer la config pour le label (utiliser le userId de celui qui a envoyé la commande)
+    const { getViewOnceCommandConfig: fetchConfig } = await import('./viewOnceCommand.service');
+    const config = await fetchConfig(commandUserId);
+    const commandLabel = config.command_emoji || config.command_text;
+
+    // --- CONFIGURATION COMMANDS ---
+    if (normalizedText.startsWith('.setvv')) {
+      const parts = normalizedText.split(' ');
+      
+      // .setvv emoji <emoji>
+      if (parts[1] === 'emoji' && parts[2]) {
+        try {
+          const emoji = parts[2];
+          await updateViewOnceCommandConfig(commandUserId, { command_emoji: emoji });
+          await socket.sendMessage(chatJid, { 
+            text: `✅ Déclencheur emoji mis à jour : ${emoji}\nVous pouvez maintenant capturer un View Once en répondant avec cet emoji.` 
+          }, { quoted: message });
+          return;
+        } catch (error) {
+          logger.error('[Config] Error updating emoji:', error);
+          await socket.sendMessage(chatJid, { text: '❌ Erreur lors de la mise à jour de l\'emoji.' }, { quoted: message });
+          return;
+        }
+      } 
+      
+      // .setvv <command>
+      else if (parts[1] && parts[1] !== 'emoji') {
+        try {
+          let newCommand = parts[1];
+          // S'assurer que ça commence par un préfixe commun pour éviter les déclenchements accidentels
+          if (!newCommand.startsWith('.') && !newCommand.startsWith('!') && !newCommand.startsWith('#')) {
+            newCommand = '.' + newCommand;
+          }
+          
+          await updateViewOnceCommandConfig(commandUserId, { command_text: newCommand });
+          await socket.sendMessage(chatJid, { 
+            text: `✅ Commande View Once mise à jour : *${newCommand}*\nVous pouvez maintenant capturer un View Once en répondant avec cette commande.` 
+          }, { quoted: message });
+          return;
+        } catch (error) {
+          logger.error('[Config] Error updating command:', error);
+          await socket.sendMessage(chatJid, { text: '❌ Erreur lors de la mise à jour de la commande.' }, { quoted: message });
+          return;
+        }
+      }
+      
+      // .setvv help
+      else {
+        const helpText = `*Configuration View Once*\n\n` +
+          `• \`.setvv <commande>\` : Change la commande (ex: \`.setvv !vv\`)\n` +
+          `• \`.setvv emoji <emoji>\` : Utilise un emoji (ex: \`.setvv emoji 👀\`)\n\n` +
+          `Commande actuelle : *${commandLabel}*`;
+        await socket.sendMessage(chatJid, { text: helpText }, { quoted: message });
+        return;
+      }
+    }
+
     if (!isViewOnceCommand) {
       // Aucune autre commande gérée pour l'instant
       return;
     }
 
-    // Récupérer la config pour le label (utiliser le userId de celui qui a envoyé la commande)
-    const { getViewOnceCommandConfig } = await import('./viewOnceCommand.service');
-    const config = await getViewOnceCommandConfig(commandUserId);
-    const commandLabel = config.command_emoji || config.command_text;
     logger.info(`[ViewOnce] 📨 View Once command detected (${commandLabel}) from ${senderId} by user ${commandUserId}`, {
       fromMe,
       hasQuotedMessage: !!quotedMessage,
@@ -186,6 +239,15 @@ export const handleIncomingMessage = async (
     // Mode silencieux : sauvegarder pour le dashboard sans envoyer de message
     const captureMode: 'vv' | 'dashboard' = 'dashboard';
 
+    // Add processing reaction
+    try {
+      await activeSocket.sendMessage(chatJid, {
+        react: { text: '📸', key: message.key }
+      });
+    } catch (reactError) {
+      logger.warn('[ViewOnce] Failed to send processing reaction:', reactError);
+    }
+
     // Capturer le View Once depuis le quoted message
     // Utiliser commandUserId (celui qui a tapé la commande) au lieu de userId (propriétaire du socket)
     logger.info(`[ViewOnce] 📸 Capturing View Once from quoted message for user ${commandUserId}`, {
@@ -211,11 +273,34 @@ export const handleIncomingMessage = async (
         fromMe,
         commandType: captureMode,
       });
+      // Add success reaction
+      try {
+        await activeSocket.sendMessage(chatJid, {
+          react: { text: '✅', key: message.key }
+        });
+      } catch (reactError) {
+        logger.warn('[ViewOnce] Failed to send success reaction:', reactError);
+      }
     } else {
       logger.warn(`[ViewOnce] ⚠️ View Once capture failed: ${result.error} - ${result.message}`, {
         fromMe,
         commandType: captureMode,
       });
+      
+      // Add error reaction and send message if it's a quota issue
+      try {
+        await activeSocket.sendMessage(chatJid, {
+          react: { text: '❌', key: message.key }
+        });
+        
+        if (result.message) {
+          await activeSocket.sendMessage(chatJid, {
+            text: result.message
+          }, { quoted: message });
+        }
+      } catch (error) {
+        logger.warn('[ViewOnce] Failed to send error feedback:', error);
+      }
     }
 
     // TODO: Ajouter la logique pour l'autoresponder (mode offline/busy)
