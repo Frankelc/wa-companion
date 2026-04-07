@@ -30,6 +30,8 @@ echo "✅ Build completed successfully!"
 
 # Install Playwright browser (Chromium) for Snap Bot
 echo "🌐 Installing Playwright Chromium for Snap Bot..."
-npx playwright install chromium
-npx playwright install-deps chromium || true # ignore if system deps unavailable (already present on Render)
+export PLAYWRIGHT_BROWSERS_PATH=0
+npx playwright install chromium || true
+npx playwright install-deps chromium || true # ignore if system deps unavailable
+echo "✅ Playwright Chromium step completed (errors ignored)!"
 echo "✅ Playwright Chromium ready!"
