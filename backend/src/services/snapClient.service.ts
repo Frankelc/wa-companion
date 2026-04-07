@@ -95,11 +95,30 @@ class SnapClientService {
     }
 
     try {
-      await this.page.fill('input[name="username"]', username, { timeout: 10000 });
-      await this.page.waitForTimeout(400);
-      await this.page.fill('input[name="password"]', password);
-      await this.page.waitForTimeout(300);
-      await this.page.click('button[type="submit"]');
+      // Step 1: Input Username
+      logger.info(`[SnapClient] 👤 Entering username: ${username}...`);
+      await this.page.fill('#username', username, { timeout: 10000 });
+      await this.page.waitForTimeout(500);
+
+      // Step 2: Click 'Next' (Suivant)
+      const submitBtn = '.Login_next__2nEN0';
+      logger.info('[SnapClient] ➡️ Clicking Next...');
+      await this.page.click(submitBtn);
+
+      // Step 3: Wait for Password field to appear (after potential security check)
+      logger.info('[SnapClient] ⏳ Waiting for password field...');
+      await this.page.waitForSelector('#password', { timeout: 15000 });
+      
+      // Step 4: Input Password
+      logger.info('[SnapClient] 🔑 Entering password...');
+      await this.page.fill('#password', password);
+      await this.page.waitForTimeout(500);
+      
+      // Step 5: Final Submit
+      logger.info('[SnapClient] 🚀 Finalizing login...');
+      await this.page.click(submitBtn);
+      
+      // Step 6: Wait for redirection to the main app
       await this.page.waitForURL('**/web.snapchat.com/**', { timeout: 15000 });
       await this.page.waitForTimeout(3000);
 
@@ -110,10 +129,16 @@ class SnapClientService {
         logger.info(`[SnapClient] ✅ Login successful for ${username}`);
         return { success: true, method: 'fresh_login' };
       }
-      return { success: false, error: 'Login failed. Wrong credentials or 2FA required.' };
+      return { success: false, error: 'Login failed. Security check or 2FA required manually.' };
     } catch (err: any) {
       logger.error('[SnapClient] ❌ Login error:', err.message);
-      return { success: false, error: err.message };
+      // Take a screenshot on failure to help debug
+      if (this.page) {
+        const debugPath = path.join(process.cwd(), 'snap_login_error.png');
+        await this.page.screenshot({ path: debugPath });
+        logger.info(`[SnapClient] 📸 Debug screenshot saved to ${debugPath}`);
+      }
+      return { success: false, error: `Login failed: ${err.message}` };
     }
   }
 
