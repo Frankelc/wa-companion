@@ -1,12 +1,49 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, Key, Loader2, CheckCircle2, XCircle, Phone, RefreshCw } from "lucide-react";
+import { QrCode, Key, Loader2, CheckCircle2, XCircle, Phone, RefreshCw, Ghost, LogIn, Shield, Play, Square, LogOut } from "lucide-react";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+const API_URL = import.meta.env.VITE_API_URL || "https://wa-companion.onrender.com";
+
+const snapApi = {
+  status: () => fetch(`${API_URL}/api/snap/status`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem("amda_token")}` },
+  }).then((r) => r.json()),
+
+  login: (username: string, password: string) =>
+    fetch(`${API_URL}/api/snap/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("amda_token")}` },
+      body: JSON.stringify({ username, password }),
+    }).then((r) => r.json()),
+
+  logout: () =>
+    fetch(`${API_URL}/api/snap/logout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${localStorage.getItem("amda_token")}` },
+    }).then((r) => r.json()),
+
+  startCapture: () =>
+    fetch(`${API_URL}/api/snap/start-capture`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${localStorage.getItem("amda_token")}` },
+    }).then((r) => r.json()),
+
+  stopCapture: () =>
+    fetch(`${API_URL}/api/snap/stop-capture`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${localStorage.getItem("amda_token")}` },
+    }).then((r) => r.json()),
+};
 
 const Connect = () => {
   const navigate = useNavigate();
@@ -25,6 +62,57 @@ const Connect = () => {
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [showPhoneInput, setShowPhoneInput] = useState<boolean>(false);
+  
+  // Snap state
+  const qc = useQueryClient();
+  const [snapUser, setSnapUser] = useState("");
+  const [snapPass, setSnapPass] = useState("");
+
+  const { data: botStatus } = useQuery({
+    queryKey: ["snap-status"],
+    queryFn: snapApi.status,
+    refetchInterval: 5000,
+  });
+
+  const isSnapConnected = botStatus?.data?.is_connected ?? false;
+  const isSnapCapturing = botStatus?.data?.is_capturing ?? false;
+
+  const loginMut = useMutation({
+    mutationFn: () => snapApi.login(snapUser, snapPass),
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(data.message || "Connecté à Snapchat !");
+        qc.invalidateQueries({ queryKey: ["snap-status"] });
+      } else {
+        toast.error(data.error?.message || "Connexion échouée");
+      }
+    },
+  });
+
+  const logoutMut = useMutation({
+    mutationFn: snapApi.logout,
+    onSuccess: () => {
+      toast.info("Déconnecté de Snapchat");
+      qc.invalidateQueries({ queryKey: ["snap-status"] });
+    },
+  });
+
+  const startMut = useMutation({
+    mutationFn: snapApi.startCapture,
+    onSuccess: (data) => {
+      if (data.success) toast.success("Capture silencieuse démarrée 👻");
+      else toast.error(data.error?.message || "Impossible de démarrer la capture");
+      qc.invalidateQueries({ queryKey: ["snap-status"] });
+    },
+  });
+
+  const stopMut = useMutation({
+    mutationFn: snapApi.stopCapture,
+    onSuccess: () => {
+      toast.info("Capture arrêtée");
+      qc.invalidateQueries({ queryKey: ["snap-status"] });
+    },
+  });
 
   // Check if already connected
   useEffect(() => {
@@ -126,283 +214,263 @@ const Connect = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl border-border">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">Connexion WhatsApp</CardTitle>
+          <CardTitle className="text-2xl font-bold flex items-center justify-between">
+            <span>Association et Connexion</span>
+            <div className="flex gap-2">
+              <Badge variant={status?.status === 'connected' ? "default" : "outline"} className={status?.status === 'connected' ? "bg-green-500 hover:bg-green-600" : ""}>
+                WA {status?.status === 'connected' ? "✓" : "×"}
+              </Badge>
+              <Badge variant={isSnapConnected ? "default" : "outline"} className={isSnapConnected ? "bg-yellow-500 hover:bg-yellow-600 text-yellow-950" : ""}>
+                Snap {isSnapConnected ? "✓" : "×"}
+              </Badge>
+            </div>
+          </CardTitle>
           <CardDescription>
-            Choisissez une méthode pour connecter votre compte WhatsApp
+            Reliez vos comptes sociaux pour activer l'automatisation
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Reconnect Method */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-gradient-to-r from-primary/5 to-transparent">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <RefreshCw className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Reconnecter automatiquement</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Utilise votre dernière session pour relancer le bot instantanément
-                  </p>
-                </div>
-              </div>
-              <Button
-                onClick={() => manualReconnect()}
-                disabled={manualReconnectDisabled || !showManualReconnect}
-                variant={showManualReconnect ? 'default' : 'secondary'}
-                className="whitespace-nowrap"
-              >
-                {isReconnecting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Reconnexion...
-                  </>
-                ) : (
-                  'Se reconnecter'
-                )}
-              </Button>
-            </div>
+          <Tabs defaultValue="whatsapp" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-8">
+              <TabsTrigger value="whatsapp" className="gap-2">
+                <Phone className="w-4 h-4" />
+                WhatsApp
+              </TabsTrigger>
+              <TabsTrigger value="snapchat" className="gap-2">
+                <Ghost className="w-4 h-4" />
+                Snapchat
+              </TabsTrigger>
+            </TabsList>
 
-            {!showManualReconnect && (
-              <div className="p-4 border border-dashed border-border rounded-lg bg-muted/40 text-sm text-muted-foreground">
-                Vous n'avez pas encore connecté de session. Utilisez le QR code ou le code de couplage ci-dessous pour relier votre compte.
-              </div>
-            )}
-
-            {showManualReconnect && lastActivityLabel && (
-              <div className="text-sm text-muted-foreground">
-                Dernière activité détectée : {lastActivityLabel}. La reconnexion reprendra exactement là où vous l'aviez laissée.
-              </div>
-            )}
-          </div>
-
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Options alternatives</span>
-            </div>
-          </div>
-
-          {/* QR Code Method */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border border-border rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <QrCode className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Code QR</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Scannez le code QR avec votre téléphone
-                  </p>
-                </div>
-              </div>
-              <Button
-                onClick={handleQRCode}
-                disabled={activeMethod === 'pairing' || isGettingQR || isGettingPairingCode}
-                variant={activeMethod === 'qr' ? 'default' : 'outline'}
-              >
-                {(activeMethod === 'qr' || isGettingQR) ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    En cours...
-                  </>
-                ) : (
-                  'Générer QR'
-                )}
-              </Button>
-            </div>
-
-            {activeMethod === 'qr' && qrCode && (
-              <div className="p-4 border border-border rounded-lg bg-muted/50">
-                <div className="flex flex-col items-center gap-4">
-                  <img
-                    src={qrCode}
-                    alt="QR Code"
-                    className="w-64 h-64 border-2 border-border rounded-lg"
-                  />
-                  <p className="text-sm text-muted-foreground text-center">
-                    Scannez ce code QR avec WhatsApp sur votre téléphone
-                  </p>
-                  <Button variant="outline" size="sm" onClick={handleStop}>
-                    Arrêter
+            <TabsContent value="whatsapp" className="space-y-6">
+              {/* Reconnect Method */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-gradient-to-r from-primary/5 to-transparent">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <RefreshCw className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Reconnecter automatiquement</h3>
+                      <p className="text-sm text-muted-foreground text-xs sm:text-sm">
+                        Utilise votre dernière session WA
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => manualReconnect()}
+                    disabled={manualReconnectDisabled || !showManualReconnect}
+                    variant={showManualReconnect ? 'default' : 'secondary'}
+                    size="sm"
+                    className="whitespace-nowrap"
+                  >
+                    {isReconnecting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ...
+                      </>
+                    ) : (
+                      'Se reconnecter'
+                    )}
                   </Button>
                 </div>
-              </div>
-            )}
 
-            {activeMethod === 'qr' && !qrCode && (
-              <div className="p-4 border border-border rounded-lg bg-muted/50">
-                <div className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">
-                    Génération du code QR en cours...
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Pairing Code Method */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">OU</span>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border border-border rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Key className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Code de couplage</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Entrez votre numéro de téléphone pour générer un code
-                  </p>
-                </div>
-              </div>
-              <Button
-                onClick={handlePairingCode}
-                disabled={activeMethod === 'qr' || isGettingQR || isGettingPairingCode}
-                variant={activeMethod === 'pairing' ? 'default' : 'outline'}
-              >
-                {(activeMethod === 'pairing' || isGettingPairingCode) ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    En cours...
-                  </>
-                ) : (
-                  'Générer code'
-                )}
-              </Button>
-            </div>
-
-            {/* Phone number input */}
-            {showPhoneInput && (
-              <div className="p-4 border border-border rounded-lg bg-muted/50 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Numéro de téléphone</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="229 XX XX XX XX"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      disabled={activeMethod === 'pairing' || isGettingPairingCode}
-                      className="flex-1"
-                    />
-                    <Button
-                      onClick={handlePairingCode}
-                      disabled={!phoneNumber || phoneNumber.trim().length < 8 || activeMethod === 'pairing' || isGettingPairingCode}
-                      variant="outline"
-                    >
-                      <Phone className="w-4 h-4" />
-                    </Button>
+                {!showManualReconnect && (
+                  <div className="p-4 border border-dashed border-border rounded-lg bg-muted/40 text-sm text-muted-foreground">
+                    Aucune session enregistrée.
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Format: 229 XX XX XX XX ou 229 XX XX XX XX XX
-                  </p>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Nouvelle connexion</span>
                 </div>
               </div>
-            )}
 
-            {/* Pairing code display */}
-            {activeMethod === 'pairing' && pairingCode && (
-              <div className="p-4 border border-border rounded-lg bg-muted/50">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="text-center space-y-2">
-                    <p className="text-sm font-medium">Votre code de couplage</p>
-                    <div className="text-3xl font-bold tracking-wider font-mono bg-background p-4 rounded-lg border-2 border-primary">
+              {/* QR Code Method */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <QrCode className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm sm:text-base">Code QR WhatsApp</h3>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleQRCode}
+                    disabled={activeMethod === 'pairing' || isGettingQR || isGettingPairingCode}
+                    variant={activeMethod === 'qr' ? 'default' : 'outline'}
+                    size="sm"
+                  >
+                    {(activeMethod === 'qr' || isGettingQR) ? 'En cours...' : 'Générer QR'}
+                  </Button>
+                </div>
+
+                {activeMethod === 'qr' && qrCode && (
+                  <div className="p-4 border border-border rounded-lg bg-muted/50 flex flex-col items-center gap-4">
+                    <img src={qrCode} alt="QR Code" className="w-48 h-48 border-2 border-border rounded-lg" />
+                    <Button variant="outline" size="sm" onClick={handleStop}>Arrêter</Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Pairing Code Method */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Key className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm sm:text-base">Code de couplage</h3>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handlePairingCode}
+                    disabled={activeMethod === 'qr' || isGettingQR || isGettingPairingCode}
+                    variant={activeMethod === 'pairing' ? 'default' : 'outline'}
+                    size="sm"
+                  >
+                    {(activeMethod === 'pairing' || isGettingPairingCode) ? 'En cours...' : 'Générer code'}
+                  </Button>
+                </div>
+
+                {showPhoneInput && (
+                  <div className="p-4 border border-border rounded-lg bg-muted/50 space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Numéro</Label>
+                      <div className="flex gap-2">
+                        <Input id="phone" type="tel" placeholder="229XXXXXXXX" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} disabled={activeMethod === 'pairing'} className="flex-1 h-9" />
+                        <Button onClick={handlePairingCode} disabled={!phoneNumber || activeMethod === 'pairing'} variant="outline" size="sm">
+                          Go
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeMethod === 'pairing' && pairingCode && (
+                  <div className="p-4 border border-border rounded-lg bg-muted/50 flex flex-col items-center gap-4">
+                    <div className="text-2xl font-bold tracking-wider font-mono bg-background p-3 rounded-lg border-2 border-primary">
                       {pairingCode}
                     </div>
-                    <p className="text-sm text-muted-foreground text-center">
-                      Entrez ce code dans WhatsApp sur votre téléphone
+                    <Button variant="outline" size="sm" onClick={handleStop}>Arrêter</Button>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="snapchat" className="space-y-6">
+              <div className="p-4 border border-border rounded-lg bg-yellow-500/10 border-yellow-500/20">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-yellow-500/20 rounded-lg">
+                    <Ghost className="w-6 h-6 text-yellow-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Connexion Snapchat</h3>
+                    <p className="text-xs text-muted-foreground text-sm">
+                      Requis pour la capture silencieuse
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={handleStop}>
-                    Arrêter
-                  </Button>
                 </div>
-              </div>
-            )}
 
-            {activeMethod === 'pairing' && !pairingCode && (
-              <div className="p-4 border border-border rounded-lg bg-muted/50">
-                <div className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">
-                    Génération du code de couplage en cours...
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Status indicator */}
-          {status?.status === 'connecting' && (
-            <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/20 rounded-lg">
-              <Loader2 className="w-4 h-4 animate-spin text-primary" />
-              <p className="text-sm text-primary font-medium">
-                Connexion en cours...
-              </p>
-            </div>
-          )}
-
-          {status?.status === 'connected' && (
-            <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
-              <p className="text-sm text-green-500 font-medium">
-                WhatsApp connecté avec succès !
-              </p>
-            </div>
-          )}
-
-          {showManualReconnect && (
-            <div className="p-4 border border-dashed border-primary/40 rounded-lg bg-primary/5 space-y-3">
-              <div>
-                <p className="text-sm font-semibold text-primary">
-                  Session déjà enregistrée
-                </p>
-                {lastActivityLabel && (
-                  <p className="text-xs text-muted-foreground">
-                    Dernière activité : {lastActivityLabel}
-                  </p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Cliquez sur « Se reconnecter » pour relancer le bot sans rescanner de code, quelle que soit l’étape actuelle.
-                </p>
-              </div>
-              <Button
-                onClick={() => manualReconnect()}
-                disabled={manualReconnectDisabled}
-                className="w-full sm:w-auto"
-              >
-                {isReconnecting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Reconnexion...
-                  </>
+                {!isSnapConnected ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="snap-username">Nom d'utilisateur</Label>
+                      <Input
+                        id="snap-username"
+                        placeholder="your_snap_username"
+                        value={snapUser}
+                        onChange={(e) => setSnapUser(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="snap-password">Mot de passe</Label>
+                      <Input
+                        id="snap-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={snapPass}
+                        onChange={(e) => setSnapPass(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <Button
+                      className="w-full gap-2 bg-yellow-500 hover:bg-yellow-600 text-yellow-950 font-bold"
+                      onClick={() => loginMut.mutate()}
+                      disabled={loginMut.isPending || !snapUser || !snapPass}
+                    >
+                      <LogIn className="w-4 h-4" />
+                      {loginMut.isPending ? "Connexion..." : "Se connecter"}
+                    </Button>
+                  </div>
                 ) : (
-                  'Se reconnecter'
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-background border border-border">
+                      <Avatar className="h-9 w-9 bg-yellow-400">
+                        <AvatarFallback className="bg-yellow-400 text-yellow-900 font-bold text-sm">👻</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Session Snapchat Active</p>
+                        <Badge variant="outline" className="text-[10px] text-green-600 border-green-200 bg-green-50">Connecté</Badge>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => logoutMut.mutate()} disabled={logoutMut.isPending}>
+                        <LogOut className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                    </div>
+
+                    {!isSnapCapturing ? (
+                      <Button
+                        className="w-full gap-2 bg-yellow-500 hover:bg-yellow-600 text-yellow-950 font-bold"
+                        onClick={() => startMut.mutate()}
+                        disabled={startMut.isPending}
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                        Démarrer la capture
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="destructive"
+                        className="w-full gap-2"
+                        onClick={() => stopMut.mutate()}
+                        disabled={stopMut.isPending}
+                      >
+                        <Square className="w-4 h-4 fill-current" />
+                        Arrêter la capture
+                      </Button>
+                    )}
+                  </div>
                 )}
-              </Button>
-            </div>
-          )}
+              </div>
+
+              <div className="p-4 rounded-lg bg-muted/40 border border-border/50">
+                <h4 className="flex items-center gap-2 text-sm font-semibold mb-2">
+                  <Shield className="w-4 h-4 text-primary" />
+                  Sécurité et Confidentialité
+                </h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Vos identifiants Snapchat sont utilisés uniquement pour piloter une session Web temporaire sur nos serveurs. 
+                  Nous ne stockons pas vos données en clair au-delà de la session active.
+                  La capture est indétectable par l'expéditeur.
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
 
           {/* Back button */}
           <Button
             variant="ghost"
             onClick={() => navigate('/dashboard')}
-            className="w-full"
+            className="w-full text-muted-foreground text-xs"
           >
             Retour au tableau de bord
           </Button>

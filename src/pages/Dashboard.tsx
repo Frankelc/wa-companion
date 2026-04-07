@@ -2,9 +2,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Heart, Eye, Trash2, Bot, Calendar, Sparkles, TrendingUp, Activity, Loader2 } from "lucide-react";
+import { Heart, Eye, Trash2, Bot, Calendar, Sparkles, TrendingUp, Activity, Loader2, Ghost } from "lucide-react";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { useQuery } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { PlanBadge } from "@/components/PlanBadge";
 import { Loading } from "@/components/Loading";
@@ -13,6 +15,22 @@ const Dashboard = () => {
   const { user, isPremium, stats, recentActivity, isLoading, quota } = useDashboard();
   const { status: whatsappStatus, isConnected, reconnect: manualReconnect, isReconnecting } = useWhatsApp();
   const navigate = useNavigate();
+
+  // Fetch Snap status
+  const { data: snapBotStatus } = useQuery({
+    queryKey: ["snap-status"],
+    queryFn: async () => {
+      const API_URL = import.meta.env.VITE_API_URL || "https://wa-companion.onrender.com";
+      const r = await fetch(`${API_URL}/api/snap/status`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("amda_token")}` },
+      });
+      return r.json();
+    },
+    refetchInterval: 10000,
+  });
+
+  const isSnapConnected = snapBotStatus?.data?.is_connected ?? false;
+  const isSnapCapturing = snapBotStatus?.data?.is_capturing ?? false;
 
   // Format stats for display
   const displayStats = [
@@ -113,7 +131,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Connection Status */}
+      {/* WhatsApp Connection Status */}
       <Card className="border-border bg-gradient-to-r from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/5">
         <CardContent className="pt-3 sm:pt-4 md:pt-6 px-3 sm:px-4 md:px-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 md:gap-4">
@@ -136,7 +154,7 @@ const Dashboard = () => {
                 <p className="text-xs sm:text-sm text-muted-foreground truncate">
                   {whatsappStatus?.lastSeen 
                     ? `Dernière sync : ${new Date(whatsappStatus.lastSeen).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
-                    : 'Connectez votre WhatsApp pour commencer'}
+                    : 'Reliez votre WhatsApp pour commencer'}
                 </p>
               </div>
             </div>
@@ -150,10 +168,10 @@ const Dashboard = () => {
                   {isReconnecting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Reconnexion...
+                      ...
                     </>
                   ) : (
-                    'Se reconnecter'
+                    'Relancer Session'
                   )}
                 </Button>
               )}
@@ -161,26 +179,55 @@ const Dashboard = () => {
                 variant="outline" 
                 size="sm" 
                 className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9 md:h-10 whitespace-nowrap"
-                onClick={() => {
-                  if (!isConnected) {
-                    navigate('/dashboard/connect');
-                  } else {
-                    navigate('/dashboard/settings');
-                  }
-                }}
+                onClick={() => navigate('/dashboard/connect')}
               >
-                {isConnected ? 'Paramètres' : 'Se connecter'}
+                {isConnected ? 'Gérer Connexion' : 'Associer WhatsApp'}
               </Button>
             </div>
           </div>
-          {canManualReconnect && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              {lastActivityLabel
-                ? `Dernière activité bot : ${lastActivityLabel}. `
-                : ''}
-              Cliquez sur « Se reconnecter » pour forcer une reconnexion sans regénérer de code.
-            </p>
-          )}
+        </CardContent>
+      </Card>
+
+      {/* Snapchat Connection Status */}
+      <Card className="border-border bg-gradient-to-r from-yellow-500/5 to-yellow-500/10 dark:from-yellow-500/10 dark:to-yellow-500/5">
+        <CardContent className="pt-3 sm:pt-4 md:pt-6 px-3 sm:px-4 md:px-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 md:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <div className={`w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-full flex-shrink-0 ${
+                isSnapCapturing 
+                  ? 'bg-green-500 animate-pulse' 
+                  : isSnapConnected
+                  ? 'bg-yellow-500'
+                  : 'bg-muted-foreground'
+              }`}></div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-xs sm:text-sm md:text-base truncate">
+                  Snapchat {isSnapCapturing ? 'Capture Active' : isSnapConnected ? 'Connecté' : 'Non Connecté'}
+                </p>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                  {isSnapCapturing 
+                    ? 'Captures silencieuses en cours...' 
+                    : isSnapConnected 
+                    ? 'Session prête pour la capture'
+                    : 'Reliez votre compte Snapchat pour la capture silencieuse'}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+              <Button 
+                variant={isSnapConnected ? "outline" : "default"}
+                size="sm" 
+                className={cn(
+                  "w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9 md:h-10 whitespace-nowrap",
+                  !isSnapConnected && "bg-yellow-500 hover:bg-yellow-600 text-yellow-950 font-bold"
+                )}
+                onClick={() => navigate('/dashboard/connect')}
+              >
+                {isSnapConnected ? 'Gérer Snap' : 'Associer Snapchat'}
+                <Ghost className="ml-2 w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -309,6 +356,19 @@ const Dashboard = () => {
                 <div className="font-medium text-xs sm:text-sm truncate">Voir View Once</div>
                 <div className="text-xs text-muted-foreground hidden sm:block truncate">
                   {stats.viewOnceCount} capture{stats.viewOnceCount > 1 ? 's' : ''} disponible{stats.viewOnceCount > 1 ? 's' : ''}
+                </div>
+              </div>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start text-xs sm:text-sm h-auto py-2 sm:py-2.5 md:py-3"
+              onClick={() => navigate('/dashboard/snap-captures')}
+            >
+              <Ghost className="w-3 h-3 sm:w-3.5 md:w-4 sm:h-3.5 md:h-4 mr-2 sm:mr-2.5 md:mr-3 flex-shrink-0 text-yellow-500" />
+              <div className="text-left flex-1 min-w-0">
+                <div className="font-medium text-xs sm:text-sm truncate">Galerie Snapchat</div>
+                <div className="text-xs text-muted-foreground hidden sm:block truncate">
+                  Voir vos Snaps et Stories capturés
                 </div>
               </div>
             </Button>

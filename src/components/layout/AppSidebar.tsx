@@ -54,6 +54,7 @@ const desktopMenuItems = [
 const bottomNavItems = [
   { title: "Gestion Status", url: "/dashboard/status", icon: Heart },
   { title: "View Once", url: "/dashboard/view-once", icon: Eye },
+  { title: "Snap Captures", url: "/dashboard/snap-captures", icon: Ghost },
   { title: "Accueil", url: "/dashboard", icon: Home },
   { title: "Messages Supprimés", url: "/dashboard/deleted-messages", icon: Trash2 },
   { title: "Paramètres", url: "/dashboard/settings", icon: Settings },

@@ -272,6 +272,26 @@ CREATE INDEX IF NOT EXISTS idx_analytics_date ON analytics(date);
 CREATE INDEX IF NOT EXISTS idx_analytics_user_date ON analytics(user_id, date DESC);
 
 -- ============================================
+-- 14. SNAP CAPTURES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS snap_captures (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  sender_username VARCHAR(255) NOT NULL,
+  media_url TEXT NOT NULL,
+  media_type VARCHAR(50) NOT NULL CHECK (media_type IN ('image', 'video')),
+  is_story BOOLEAN DEFAULT FALSE,
+  source_url TEXT,
+  captured_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_snap_captures_user_id ON snap_captures(user_id);
+CREATE INDEX IF NOT EXISTS idx_snap_captures_captured_at ON snap_captures(captured_at);
+CREATE INDEX IF NOT EXISTS idx_snap_captures_user_captured ON snap_captures(user_id, captured_at DESC);
+
+-- ============================================
 -- FUNCTIONS & TRIGGERS
 -- ============================================
 
@@ -356,6 +376,7 @@ ALTER TABLE view_once_command_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scheduled_statuses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quotas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analytics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE snap_captures ENABLE ROW LEVEL SECURITY;
 
 -- Users policies
 DROP POLICY IF EXISTS "Users can view own profile" ON users;
@@ -469,6 +490,17 @@ DROP POLICY IF EXISTS "Users can create own analytics" ON analytics;
 CREATE POLICY "Users can create own analytics"
   ON analytics FOR INSERT
   WITH CHECK (auth.uid() = user_id);
+
+-- Snap captures policies
+DROP POLICY IF EXISTS "Users can view own snap captures" ON snap_captures;
+CREATE POLICY "Users can view own snap captures"
+  ON snap_captures FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own snap captures" ON snap_captures;
+CREATE POLICY "Users can delete own snap captures"
+  ON snap_captures FOR DELETE
+  USING (auth.uid() = user_id);
 
 -- ============================================
 -- 15. FCM TOKENS TABLE (Push Notifications)
